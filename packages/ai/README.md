@@ -1,5 +1,32 @@
 ![hero illustration](./assets/hero.gif)
 
+# 代码阅读推荐顺序
+
+1. **项目概览与配置:**
+    * [`README.md`](./README.md)
+    * [`package.json`](./package.json)
+    * [`pnpm-workspace.yaml`](./pnpm-workspace.yaml)
+2. **核心 AI 包 (`packages/ai`):**
+    * [`packages/ai/package.json`](./packages/ai/package.json)
+    * [`packages/ai/core/index.ts`](./packages/ai/core/index.ts)
+    * [`packages/ai/streams/index.ts`](./packages/ai/streams/index.ts)
+    * [`packages/ai/react/index.ts`](./packages/ai/react/index.ts)
+    * [`packages/ai/rsc/index.ts`](./packages/ai/rsc/index.ts)
+3. **核心 UI 包 (`packages/react` - 注意: 似乎与 `packages/ai/react` 相关):**
+    * [`packages/react/package.json`](./packages/react/package.json)
+    * [`packages/react/src/index.ts`](./packages/react/src/index.ts)
+    * [`packages/react/src/use-chat.ts`](./packages/react/src/use-chat.ts)
+4. **模型提供商示例 (`packages/openai`):**
+    * [`packages/openai/package.json`](./packages/openai/package.json)
+    * [`packages/openai/src/index.ts`](./packages/openai/src/index.ts)
+    * [`packages/openai/src/openai-provider.ts`](./packages/openai/src/openai-provider.ts.annotated)
+5. **应用示例 (`examples`):**
+    * [`examples/next-openai/app/api/chat/route.ts`](./examples/next-openai/app/api/chat/route.ts)
+    * [`examples/next-openai/app/page.tsx`](./examples/next-openai/app/page.tsx)
+    * [`examples/node-http-server/src/server.ts`](./examples/node-http-server/src/server.ts.annotated)
+
+---
+
 # AI SDK
 
 The [AI SDK](https://sdk.vercel.ai/docs) is a TypeScript toolkit designed to help you build AI-powered applications using popular frameworks like Next.js, React, Svelte, Vue and runtimes like Node.js.

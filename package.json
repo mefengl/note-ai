@@ -1,80 +1,123 @@
 {
+  // "private": true 表示这是一个私有项目，通常不会发布到 npm 公共仓库。
+  // 这对于 monorepo (一个仓库管理多个包) 的根目录很常见。
   "private": true,
+  // "name": "ai-repo" 项目的名字，简单明了。
   "name": "ai-repo",
+  // "scripts": 定义了一堆可以用 pnpm run <脚本名> 来执行的命令脚本。
+  // 就像给常用的操作起了别名，方便执行。
   "scripts": {
+    // "build": "turbo build" - 使用 turbo 这个工具来构建整个项目里的所有包。
+    // turbo 是一个高性能的构建系统，特别适合 monorepo。
     "build": "turbo build",
+    // "changeset": "changeset" - 运行 changeset 工具，用来管理版本变更和生成发布日志。
     "changeset": "changeset",
+    // "clean": "turbo clean" - 使用 turbo 清理所有包的构建产物（比如 dist 目录）。
     "clean": "turbo clean",
+    // "dev": "turbo dev ..." - 使用 turbo 启动所有包的开发模式。
+    // --no-cache: 不使用缓存，确保拿到最新代码。
+    // --concurrency 16: 同时最多跑 16 个任务。
+    // --continue: 如果某个包启动失败，继续尝试启动其他的。
     "dev": "turbo dev --no-cache --concurrency 16 --continue",
+    // "lint": "turbo lint" - 使用 turbo 运行所有包的代码风格检查 (lint)。
     "lint": "turbo lint",
+    // "prepare": "husky install" - 这个脚本在 pnpm install 之后会自动运行。
+    // husky 是一个工具，用来设置 Git 钩子 (hooks)，比如在提交代码前自动检查代码风格。
     "prepare": "husky install",
+    // "prettier-check": "prettier --check ..." - 使用 prettier 检查代码格式是否符合规范，但不修改文件。
     "prettier-check": "prettier --check \"**/*.{js,ts,tsx,md,mdx,svelte}\"",
+    // "type-check": "turbo type-check" - 使用 turbo 运行所有包的 TypeScript 类型检查。
     "type-check": "turbo type-check",
+    // "prettier-fix": "prettier --write ..." - 使用 prettier 自动修复代码格式问题。
     "prettier-fix": "prettier --write \"**/*.{js,ts,tsx,md,mdx,svelte}\"",
+    // "publint": "turbo publint" - 使用 turbo 运行 publint 工具，检查包是否适合发布到 npm。
     "publint": "turbo publint",
+    // "test": "turbo test ..." - 使用 turbo 运行所有包的测试。
     "test": "turbo test --concurrency 16",
+    // "ci:release": "..." - 用于持续集成 (CI) 环境的发布脚本。
+    // 先清理，再构建，然后用 changeset 发布。
     "ci:release": "turbo clean && turbo build && changeset publish",
+    // "ci:version": "..." - 用于 CI 环境的版本管理脚本。
+    // 先用 changeset 更新版本号，然后运行一个脚本清理示例项目的 changeset 文件，最后重新安装依赖。
     "ci:version": "changeset version && node .github/scripts/cleanup-examples-changesets.mjs && pnpm install --no-frozen-lockfile",
+    // "clean-examples": "..." - 清理示例项目的 changeset 文件并重装依赖。
     "clean-examples": "node .github/scripts/cleanup-examples-changesets.mjs && pnpm install --no-frozen-lockfile"
   },
+  // "lint-staged": 配置 lint-staged 工具。
+  // 这个工具通常配合 husky 使用，在 Git 提交前只对暂存区 (staged) 的文件执行指定的命令。
   "lint-staged": {
+    // "*": 对所有暂存的文件执行 prettier 格式化。
     "*": [
       "prettier --ignore-unknown --write"
     ]
   },
+  // "devDependencies": 项目开发时需要用到的依赖工具，这些不会被打包到最终发布的产品里。
+  // 比如测试框架、构建工具、代码检查工具等。
   "devDependencies": {
-    "@changesets/cli": "2.27.10",
-    "@playwright/test": "^1.44.1",
-    "eslint": "8.57.1",
-    "eslint-config-vercel-ai": "workspace:*",
-    "husky": "^8.0.0",
-    "lint-staged": "15.2.10",
-    "next": "15.0.0-canary.23",
-    "playwright": "^1.44.1",
-    "prettier": "^3.3.3",
-    "prettier-plugin-svelte": "^3.3.3",
-    "publint": "0.2.12",
-    "react": "19.0.0-rc-cc1ec60d0d-20240607",
-    "react-dom": "19.0.0-rc-cc1ec60d0d-20240607",
-    "turbo": "2.4.4",
-    "typescript": "5.6.3",
-    "vitest": "2.1.4"
+    "@changesets/cli": "2.27.10", // 管理版本和变更日志
+    "@playwright/test": "^1.44.1", // 端到端测试框架
+    "eslint": "8.57.1", // 代码风格和错误检查
+    "eslint-config-vercel-ai": "workspace:*", // 自定义的 eslint 配置，来自 workspace 内的包
+    "husky": "^8.0.0", // Git 钩子工具
+    "lint-staged": "15.2.10", // 在提交前对暂存文件运行 linter
+    "next": "15.0.0-canary.23", // Next.js 框架 (可能是某个示例或内部工具需要)
+    "playwright": "^1.44.1", // Playwright 浏览器自动化库
+    "prettier": "^3.3.3", // 代码格式化工具
+    "prettier-plugin-svelte": "^3.3.3", // Prettier 的 Svelte 插件
+    "publint": "0.2.12", // 检查包发布配置
+    "react": "19.0.0-rc-cc1ec60d0d-20240607", // React 库 (可能是示例或内部工具需要)
+    "react-dom": "19.0.0-rc-cc1ec60d0d-20240607", // React DOM 库
+    "turbo": "2.4.4", // 高性能构建系统
+    "typescript": "5.6.3", // TypeScript 语言支持
+    "vitest": "2.1.4" // 测试框架
   },
+  // "engines": 指定项目运行所需的 Node.js 版本范围。
   "engines": {
-    "node": "^18.0.0 || ^20.0.0 || ^22.0.0"
+    "node": "^18.0.0 || ^20.0.0 || ^22.0.0" // 需要 Node.js 18 或 20 或 22 版本
   },
+  // "homepage": 项目的主页 URL。
   "homepage": "https://sdk.vercel.ai/docs",
+  // "repository": 代码仓库的信息。
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vercel/ai.git"
+    "type": "git", // 类型是 Git
+    "url": "git+https://github.com/vercel/ai.git" // 仓库地址
   },
+  // "license": 项目的许可证类型。
   "license": "Apache License",
+  // "bugs": 报告问题的地址。
   "bugs": {
     "url": "https://github.com/vercel/ai/issues"
   },
+  // "keywords": 项目的关键词，方便在 npm 上搜索。
   "keywords": [
     "ai"
   ],
+  // "packageManager": 指定项目使用的包管理器和版本。
+  // 这里强制使用 pnpm 9.12.3 版本，保证所有开发者环境一致。
   "packageManager": "pnpm@9.12.3",
+  // "prettier": Prettier 代码格式化工具的配置。
   "prettier": {
-    "tabWidth": 2,
-    "useTabs": false,
-    "singleQuote": true,
-    "arrowParens": "avoid",
-    "trailingComma": "all",
-    "plugins": [
-      "prettier-plugin-svelte"
+    "tabWidth": 2, // Tab 宽度为 2 个空格
+    "useTabs": false, // 不使用 Tab 字符，用空格代替
+    "singleQuote": true, // 使用单引号而不是双引号
+    "arrowParens": "avoid", // 箭头函数只有一个参数时省略括号 (e.g., x => x*x)
+    "trailingComma": "all", // 在多行对象或数组的末尾加上逗号
+    "plugins": [ // 加载 Prettier 插件
+      "prettier-plugin-svelte" // Svelte 文件格式化插件
     ],
-    "overrides": [
+    "overrides": [ // 针对特定文件类型的覆盖配置
       {
-        "files": "*.svelte",
+        "files": "*.svelte", // 对所有 .svelte 文件
         "options": {
-          "parser": "svelte"
+          "parser": "svelte" // 使用 svelte 解析器
         }
       }
     ]
   },
+  // "pnpm": pnpm 包管理器的特定配置。
   "pnpm": {
+    // "onlyBuiltDependencies": 指定哪些依赖需要在安装时进行构建。
+    // 这里指定了 esbuild。
     "onlyBuiltDependencies": [
       "esbuild"
     ]

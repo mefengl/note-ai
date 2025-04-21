@@ -1,3 +1,33 @@
+/**
+ * @fileoverview useChat Hook - AI 聊天功能的核心实现
+ * 
+ * 这个文件实现了一个强大的 React Hook,用于构建 AI 聊天界面。它处理了与 AI 模型对话所需的所有复杂性:
+ * 
+ * 1. 消息管理
+ *    - 存储对话历史
+ *    - 追加新消息
+ *    - 处理消息状态(加载中、流式传输中等)
+ * 
+ * 2. 网络通信
+ *    - 处理与 AI API 的通信
+ *    - 支持流式响应
+ *    - 错误处理
+ * 
+ * 3. UI 状态管理
+ *    - 输入框控制
+ *    - 加载状态
+ *    - 错误状态
+ * 
+ * 4. 高级功能
+ *    - 工具调用支持
+ *    - 消息重新生成
+ *    - 自定义请求处理
+ * 
+ * 主要组件:
+ * - UseChatHelpers: 定义了 hook 返回的所有功能
+ * - useChat: 主要的 hook 实现
+ */
+
 import type {
   ChatRequest,
   ChatRequestOptions,
@@ -25,79 +55,96 @@ import { useStableValue } from './util/use-stable-value';
 
 export type { CreateMessage, Message, UseChatOptions };
 
+/**
+ * UseChatHelpers 接口定义了 useChat hook 返回的所有功能
+ * 这些功能让开发者能够完全控制聊天界面的行为
+ */
 export type UseChatHelpers = {
-  /** Current messages in the chat */
+  /** 当前聊天中的所有消息 */
   messages: UIMessage[];
-  /** The error object of the API request */
+  
+  /** API 请求的错误对象(如果有的话) */
   error: undefined | Error;
+  
   /**
-   * Append a user message to the chat list. This triggers the API call to fetch
-   * the assistant's response.
-   * @param message The message to append
-   * @param options Additional options to pass to the API call
+   * 向聊天列表添加用户消息
+   * 这会触发 API 调用来获取 AI 助手的响应
+   * 
+   * @param message - 要添加的消息
+   * @param options - 传递给 API 的额外选项
+   * @returns 返回生成的消息ID或null
    */
   append: (
     message: Message | CreateMessage,
     chatRequestOptions?: ChatRequestOptions,
   ) => Promise<string | null | undefined>;
+
   /**
-   * Reload the last AI chat response for the given chat history. If the last
-   * message isn't from the assistant, it will request the API to generate a
-   * new response.
+   * 重新加载最后一条 AI 响应
+   * 如果最后一条消息不是来自 AI,会请求 API 生成新的响应
    */
   reload: (
     chatRequestOptions?: ChatRequestOptions,
   ) => Promise<string | null | undefined>;
-  /**
-   * Abort the current request immediately, keep the generated tokens if any.
-   */
+
+  /** 立即中止当前请求,保留已生成的内容 */
   stop: () => void;
+
   /**
-   * Update the `messages` state locally. This is useful when you want to
-   * edit the messages on the client, and then trigger the `reload` method
-   * manually to regenerate the AI response.
+   * 本地更新 messages 状态
+   * 用于在客户端编辑消息,然后手动触发 reload 重新生成 AI 响应
    */
   setMessages: (
     messages: Message[] | ((messages: Message[]) => Message[]),
   ) => void;
-  /** The current value of the input */
+
+  /** 输入框的当前值 */
   input: string;
-  /** setState-powered method to update the input value */
+  
+  /** 用于更新输入值的 setState 方法 */
   setInput: React.Dispatch<React.SetStateAction<string>>;
-  /** An input/textarea-ready onChange handler to control the value of the input */
+  
+  /** 适用于 input/textarea 的 onChange 处理函数 */
   handleInputChange: (
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>,
   ) => void;
-  /** Form submission handler to automatically reset input and append a user message */
+
+  /** 
+   * 表单提交处理函数
+   * 自动重置输入并追加用户消息 
+   */
   handleSubmit: (
     event?: { preventDefault?: () => void },
     chatRequestOptions?: ChatRequestOptions,
   ) => void;
+
+  /** 可选的元数据对象 */
   metadata?: Object;
 
-  /**
-   * Whether the API request is in progress
-   *
-   * @deprecated use `status` instead
+  /** 
+   * API 请求是否正在进行中
+   * @deprecated 请使用 status 代替
    */
   isLoading: boolean;
 
   /**
-   * Hook status:
-   *
-   * - `submitted`: The message has been sent to the API and we're awaiting the start of the response stream.
-   * - `streaming`: The response is actively streaming in from the API, receiving chunks of data.
-   * - `ready`: The full response has been received and processed; a new user message can be submitted.
-   * - `error`: An error occurred during the API request, preventing successful completion.
+   * Hook 状态:
+   * - submitted: 消息已发送到 API,等待响应流开始
+   * - streaming: 正在从 API 接收流式响应数据
+   * - ready: 完整响应已接收并处理完成,可以提交新消息
+   * - error: API 请求过程中发生错误
    */
   status: 'submitted' | 'streaming' | 'ready' | 'error';
 
-  /** Additional data added on the server via StreamData. */
+  /** 服务器通过 StreamData 添加的额外数据 */
   data?: JSONValue[];
 
-  /** Set the data of the chat. You can use this to transform or clear the chat data. */
+  /** 
+   * 设置聊天数据
+   * 可用于转换或清除聊天数据
+   */
   setData: (
     data:
       | JSONValue[]
@@ -105,10 +152,36 @@ export type UseChatHelpers = {
       | ((data: JSONValue[] | undefined) => JSONValue[] | undefined),
   ) => void;
 
-  /** The id of the chat */
+  /** 聊天会话的唯一标识符 */
   id: string;
 };
 
+/**
+ * useChat - AI 聊天功能的核心 Hook
+ * 
+ * @param options - Hook 配置选项
+ * @param options.api - API 端点,默认为 '/api/chat'
+ * @param options.id - 可选的聊天 ID
+ * @param options.initialMessages - 初始消息列表
+ * @param options.initialInput - 输入框的初始值
+ * @param options.sendExtraMessageFields - 是否发送消息的额外字段
+ * @param options.onToolCall - 工具调用的处理函数
+ * @param options.experimental_prepareRequestBody - 自定义请求体处理函数
+ * @param options.maxSteps - 最大连续 LLM 调用次数,默认为 1
+ * @param options.streamProtocol - 流协议类型,默认为 'data'
+ * @param options.onResponse - 响应处理回调
+ * @param options.onFinish - 完成处理回调
+ * @param options.onError - 错误处理回调
+ * @param options.credentials - 认证信息
+ * @param options.headers - 请求头
+ * @param options.body - 请求体
+ * @param options.generateId - ID 生成函数
+ * @param options.fetch - 自定义 fetch 函数
+ * @param options.keepLastMessageOnError - 发生错误时是否保留最后一条消息
+ * @param options.experimental_throttle - 消息更新节流等待时间(ms)
+ * 
+ * @returns UseChatHelpers 对象,包含控制聊天的所有方法
+ */
 export function useChat({
   api = '/api/chat',
   id,
@@ -235,32 +308,43 @@ By default, it's set to 1, which means that only a single LLM call is made.
     };
   }, [credentials, headers, body]);
 
+  /**
+   * 聊天核心逻辑实现
+   * 这个函数处理与AI的实际对话过程
+   */
   const triggerRequest = useCallback(
     async (chatRequest: ChatRequest) => {
+      // 设置状态为已提交并清除错误
       mutateStatus('submitted');
       setError(undefined);
 
+      // 确保所有消息都有正确的parts字段
       const chatMessages = fillMessageParts(chatRequest.messages);
 
+      // 获取当前消息数量和最大工具调用步骤数
       const messageCount = chatMessages.length;
       const maxStep = extractMaxToolInvocationStep(
         chatMessages[chatMessages.length - 1]?.toolInvocations,
       );
 
       try {
+        // 创建新的中止控制器用于取消请求
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
+        // 创建节流版本的状态更新函数
         const throttledMutate = throttle(mutate, throttleWaitMs);
         const throttledMutateStreamData = throttle(
           mutateStreamData,
           throttleWaitMs,
         );
 
-        // Do an optimistic update to the chat state to show the updated messages immediately:
+        // 乐观更新：立即显示更新后的消息
         const previousMessages = messagesRef.current;
         throttledMutate(chatMessages, false);
 
+        // 根据配置准备消息载荷
+        // 如果sendExtraMessageFields为false，只保留基本字段
         const constructedMessagesPayload = sendExtraMessageFields
           ? chatMessages
           : chatMessages.map(
@@ -287,8 +371,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
 
         const existingData = streamDataRef.current;
 
+        // 调用聊天API
         await callChatApi({
           api,
+          // 准备请求体：允许自定义或使用默认结构
           body: experimental_prepareRequestBody?.({
             id: chatId,
             messages: chatMessages,
@@ -307,16 +393,21 @@ By default, it's set to 1, which means that only a single LLM call is made.
             ...extraMetadataRef.current.headers,
             ...chatRequest.headers,
           },
+          // 提供中止控制器访问
           abortController: () => abortControllerRef.current,
+          // 失败时恢复消息
           restoreMessagesOnFailure() {
             if (!keepLastMessageOnError) {
               throttledMutate(previousMessages, false);
             }
           },
           onResponse,
+          // 处理流式更新
           onUpdate({ message, data, replaceLastMessage }) {
+            // 设置状态为正在流式传输
             mutateStatus('streaming');
 
+            // 更新消息列表
             throttledMutate(
               [
                 ...(replaceLastMessage
@@ -327,6 +418,7 @@ By default, it's set to 1, which means that only a single LLM call is made.
               false,
             );
 
+            // 更新流数据
             if (data?.length) {
               throttledMutateStreamData(
                 [...(existingData ?? []), ...data],
@@ -343,9 +435,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
 
         abortControllerRef.current = null;
 
+        // 设置状态为准备好
         mutateStatus('ready');
       } catch (err) {
-        // Ignore abort errors as they are expected.
+        // 忽略中止错误，因为它们是预期的
         if ((err as any).name === 'AbortError') {
           abortControllerRef.current = null;
           mutateStatus('ready');
@@ -360,8 +453,8 @@ By default, it's set to 1, which means that only a single LLM call is made.
         mutateStatus('error');
       }
 
-      // auto-submit when all tool calls in the last assistant message have results
-      // and assistant has not answered yet
+      // 当最后一条助手消息中的所有工具调用都有结果时自动提交
+      // 并且助手尚未回答
       const messages = messagesRef.current;
       if (
         shouldResubmitMessages({
@@ -400,6 +493,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
     ],
   );
 
+  /**
+   * 添加新消息到聊天
+   * 处理附件和消息格式化，然后触发API请求
+   */
   const append = useCallback(
     async (
       message: Message | CreateMessage,
@@ -410,10 +507,12 @@ By default, it's set to 1, which means that only a single LLM call is made.
         experimental_attachments,
       }: ChatRequestOptions = {},
     ) => {
+      // 处理附件，确保它们准备好被发送
       const attachmentsForRequest = await prepareAttachmentsForRequest(
         experimental_attachments,
       );
 
+      // 构建新消息对象，包含所有必要的字段
       const messages = messagesRef.current.concat({
         ...message,
         id: message.id ?? generateId(),
@@ -423,11 +522,16 @@ By default, it's set to 1, which means that only a single LLM call is made.
         parts: getMessageParts(message),
       });
 
+      // 触发API请求
       return triggerRequest({ messages, headers, body, data });
     },
     [triggerRequest, generateId],
   );
 
+  /**
+   * 重新加载最后的对话
+   * 可用于重试失败的请求或重新生成AI响应
+   */
   const reload = useCallback(
     async ({ data, headers, body }: ChatRequestOptions = {}) => {
       const messages = messagesRef.current;
@@ -436,7 +540,7 @@ By default, it's set to 1, which means that only a single LLM call is made.
         return null;
       }
 
-      // Remove last assistant message and retry last user message.
+      // 如果最后一条是AI的消息，则移除它并重试用户的最后一条消息
       const lastMessage = messages[messages.length - 1];
       return triggerRequest({
         messages:
@@ -449,6 +553,9 @@ By default, it's set to 1, which means that only a single LLM call is made.
     [triggerRequest],
   );
 
+  /**
+   * 停止当前正在进行的API请求
+   */
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -456,6 +563,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
     }
   }, []);
 
+  /**
+   * 更新消息列表
+   * 支持直接设置消息数组或通过函数更新
+   */
   const setMessages = useCallback(
     (messages: Message[] | ((messages: Message[]) => Message[])) => {
       if (typeof messages === 'function') {
@@ -469,6 +580,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
     [mutate],
   );
 
+  /**
+   * 更新流数据
+   * 支持直接设置数据或通过函数更新
+   */
   const setData = useCallback(
     (
       data:
@@ -486,9 +601,13 @@ By default, it's set to 1, which means that only a single LLM call is made.
     [mutateStreamData],
   );
 
-  // Input state and handlers.
+  // 输入状态管理
   const [input, setInput] = useState(initialInput);
 
+  /**
+   * 处理表单提交
+   * 包括发送消息和处理元数据
+   */
   const handleSubmit = useCallback(
     async (
       event?: { preventDefault?: () => void },
@@ -497,8 +616,10 @@ By default, it's set to 1, which means that only a single LLM call is made.
     ) => {
       event?.preventDefault?.();
 
+      // 如果输入为空且不允许空提交，则直接返回
       if (!input && !options.allowEmptySubmit) return;
 
+      // 更新元数据
       if (metadata) {
         extraMetadataRef.current = {
           ...extraMetadataRef.current,
@@ -538,17 +659,22 @@ By default, it's set to 1, which means that only a single LLM call is made.
     setInput(e.target.value);
   };
 
+  /**
+   * 处理工具调用结果
+   * 当AI调用了工具并获得结果时使用此函数更新状态
+   */
   const addToolResult = useCallback(
     ({ toolCallId, result }: { toolCallId: string; result: unknown }) => {
       const currentMessages = messagesRef.current;
 
+      // 将工具调用结果更新到消息中
       updateToolCallResult({
         messages: currentMessages,
         toolCallId,
         toolResult: result,
       });
 
-      // array mutation is required to trigger a re-render
+      // 通过数组变更触发重新渲染
       mutate(
         [
           ...currentMessages.slice(0, currentMessages.length - 1),
@@ -557,12 +683,12 @@ By default, it's set to 1, which means that only a single LLM call is made.
         false,
       );
 
-      // when the request is ongoing, the auto-submit will be triggered after the request is finished
+      // 如果请求正在进行中，自动提交将在请求完成后触发
       if (status === 'submitted' || status === 'streaming') {
         return;
       }
 
-      // auto-submit when all tool calls in the last assistant message have results:
+      // 当最后一条助手消息中的所有工具调用都有结果时自动提交
       const lastMessage = currentMessages[currentMessages.length - 1];
       if (isAssistantMessageWithCompletedToolCalls(lastMessage)) {
         triggerRequest({ messages: currentMessages });
@@ -571,6 +697,27 @@ By default, it's set to 1, which means that only a single LLM call is made.
     [mutate, status, triggerRequest],
   );
 
+  /**
+   * 返回 useChat hook 的所有功能
+   * 
+   * @returns {Object} 包含以下功能:
+   * - messages: 当前的消息列表
+   * - id: 聊天会话ID
+   * - setMessages: 更新消息列表的函数
+   * - data: 流数据
+   * - setData: 更新流数据的函数
+   * - error: 错误对象(如果有)
+   * - append: 添加新消息的函数
+   * - reload: 重新加载对话的函数
+   * - stop: 停止当前请求的函数
+   * - input: 输入框的当前值
+   * - setInput: 更新输入值的函数
+   * - handleInputChange: 处理输入变化的函数
+   * - handleSubmit: 处理表单提交的函数
+   * - isLoading: 是否正在加载
+   * - status: 当前状态
+   * - addToolResult: 添加工具调用结果的函数
+   */
   return {
     messages: messages ?? [],
     id: chatId,

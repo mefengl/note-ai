@@ -1,6 +1,38 @@
+# filepath: /Volumes/MI-1T/Developer/GitHub/note-ai/pnpm-workspace.yaml
+# 这个文件是 pnpm (一个 Node.js 包管理器) 的工作区 (workspace) 配置文件。
+# 它告诉 pnpm 这个代码仓库 (repository) 包含了多个独立的包 (packages)，
+# 以及去哪里找到这些包。
+# 这就是所谓的 monorepo 结构：一个仓库管理多个项目/包。
+
 packages:
+  # 'packages:' 是一个关键字，后面列出的是包所在位置的模式 (glob patterns)。
+  # pnpm 会根据这些模式去查找子目录下的 package.json 文件，
+  # 每个找到的 package.json 都代表一个独立的包。
+
+  # - 'apps/*' : 表示 'apps' 文件夹下的所有直接子目录都被视为包。
+  #   例如，如果存在 apps/web/package.json，那么 'web' 就是一个包。
+  #   这里的 'apps' 目录通常放的是可以直接运行的应用程序，比如网站、API 服务等。
   - 'apps/*'
+
+  # - 'packages/*' : 表示 'packages' 文件夹下的所有直接子目录都被视为包。
+  #   例如，packages/ai/package.json，那么 'ai' 就是一个包。
+  #   这里的 'packages' 目录通常放的是可复用的库或模块，供其他包或应用使用。
   - 'packages/*'
+
+  # - 'tools/*' : 表示 'tools' 文件夹下的所有直接子目录都被视为包。
+  #   例如，tools/eslint-config/package.json。
+  #   这里的 'tools' 目录通常放的是开发工具或辅助脚本。
   - 'tools/*'
+
+  # - 'examples/*' : 表示 'examples' 文件夹下的所有直接子目录都被视为包。
+  #   例如，examples/next-openai/package.json。
+  #   这里的 'examples' 目录通常放的是使用项目核心功能的示例代码。
   - 'examples/*'
+
+  # - 'packages/ai/tests/e2e/next-server' : 这个比较特殊，它直接指定了一个具体的路径。
+  #   这意味着 'packages/ai/tests/e2e/next-server' 这个目录本身就是一个包，
+  #   里面应该有一个 package.json 文件。
+  #   单独指定路径通常是因为这个包的位置不符合上面的通用模式，
+  #   或者需要特别强调它是一个独立的单元。
+  #   看名字，这可能是一个用于端到端 (e2e) 测试的 Next.js 服务。
   - 'packages/ai/tests/e2e/next-server'
